@@ -1,0 +1,26 @@
+[package]
+name = "xun-cloud-desktop"
+version = "0.2.0"
+edition = "2021"
+description = "XunCloud account sync desktop (HTML + Tauri, no Qt)"
+license = "MPL-2.0"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.5", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls", "blocking"] }
+sha2 = "0.10"
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync"] }
+zeroize = "1"
+
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+keyring = { version = "=3.6.3", default-features = false, features = ["apple-native", "windows-native"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

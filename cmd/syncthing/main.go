@@ -44,6 +44,7 @@ import (
 	"github.com/syncthing/syncthing/internal/db/sqlite"
 	"github.com/syncthing/syncthing/internal/slogutil"
 	"github.com/syncthing/syncthing/lib/build"
+	"github.com/syncthing/syncthing/lib/cloudsync"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/dialer"
 	"github.com/syncthing/syncthing/lib/events"
@@ -130,6 +131,7 @@ type CLI struct {
 	Serve serveCmd `cmd:"" help:"Run Syncthing (default)" default:"withargs"`
 	CLI   cli.CLI  `cmd:"" help:"Command line interface for Syncthing"`
 
+	Cloud    cloudCmd     `cmd:"" help:"Administer local XunCloud sync accounts"`
 	Browser  browserCmd   `cmd:"" help:"Open GUI in browser, then exit"`
 	Decrypt  decrypt.CLI  `cmd:"" help:"Decrypt or verify an encrypted folder"`
 	DeviceID deviceIDCmd  `cmd:"" help:"Show device ID, then exit"`
@@ -152,6 +154,11 @@ func (c *CLI) AfterApply() error {
 type serveCmd struct {
 	buildSpecificOptions
 
+	CloudListen               string        `help:"Enable the separate HTTPS cloud enrollment listener (e.g. 0.0.0.0:8443)" env:"XUNCLOUD_LISTEN"`
+	CloudRoot                 string        `help:"Absolute server root for isolated cloud account directories" env:"XUNCLOUD_ROOT"`
+	CloudCert                 string        `help:"HTTPS enrollment certificate PEM (must match the public hostname/IP)" env:"XUNCLOUD_CERT"`
+	CloudKey                  string        `help:"HTTPS enrollment private key PEM" env:"XUNCLOUD_KEY"`
+	CloudSyncPort             int           `help:"Public TCP sync port for enrolled clients" default:"22000" env:"XUNCLOUD_SYNC_PORT"`
 	AllowNewerConfig          bool          `help:"Allow loading newer than current config version" env:"STALLOWNEWERCONFIG"`
 	Audit                     bool          `help:"Write events to audit file" env:"STAUDIT"`
 	AuditFile                 string        `name:"auditfile" help:"Specify audit file (use \"-\" for stdout, \"--\" for stderr)" placeholder:"PATH" env:"STAUDITFILE"`
@@ -554,6 +561,7 @@ func (c *serveCmd) syncthingMain() {
 	}
 
 	appOpts := syncthing.Options{
+		Cloud:                 cloudsync.Options{Listen: c.CloudListen, Root: c.CloudRoot, CertFile: c.CloudCert, KeyFile: c.CloudKey, SyncPort: c.CloudSyncPort},
 		NoUpgrade:             c.NoUpgrade,
 		ProfilerAddr:          c.DebugProfilerListen,
 		ResetDeltaIdxs:        c.DebugResetDeltaIdxs,

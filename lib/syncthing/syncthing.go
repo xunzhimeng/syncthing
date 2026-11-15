@@ -27,6 +27,7 @@ import (
 	"github.com/syncthing/syncthing/internal/slogutil"
 	"github.com/syncthing/syncthing/lib/api"
 	"github.com/syncthing/syncthing/lib/build"
+	"github.com/syncthing/syncthing/lib/cloudsync"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/connections"
 	"github.com/syncthing/syncthing/lib/connections/registry"
@@ -52,6 +53,7 @@ const (
 )
 
 type Options struct {
+	Cloud                 cloudsync.Options
 	AuditWriter           io.Writer
 	NoUpgrade             bool
 	ProfilerAddr          string
@@ -302,6 +304,17 @@ func (a *App) startup() error {
 	if err := a.setupGUI(m, defaultSub, diskSub, discoveryManager, connectionsService, usageReportingSvc, slogutil.ErrorRecorder, slogutil.GlobalRecorder, miscDB); err != nil {
 		slog.Error("Failed to start API", slogutil.Error(err))
 		return err
+	}
+
+	if a.opts.Cloud.Listen != "" {
+		cloud, err := cloudsync.NewServer(a.cfg, a.opts.Cloud)
+		if err != nil {
+			return fmt.Errorf("cloud account server: %w", err)
+		}
+		a.mainService.Add(cloud)
+		if err := cloud.WaitForStart(); err != nil {
+			return fmt.Errorf("cloud account listener: %w", err)
+		}
 	}
 
 	myDev, _ := a.cfg.Device(a.myID)

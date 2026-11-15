@@ -115,6 +115,7 @@
               <span class="caret"></span>
             </a>
             <ul class="dropdown-menu">
+              <li ng-if="cloud.local"><a href="" ng-click="cloud.open = true"><span class="fa fa-fw fa-cloud"></span>&nbsp;<span translate>Connect cloud account</span></a></li>
               <li><a href="" ng-click="showSettings()"><span class="fa fa-fw fa-cog"></span>&nbsp;<span translate>Settings</span></a></li>
               <li><a href="" ng-click="advanced()"><span class="fa fa-fw fa-cogs"></span>&nbsp;<span translate>Advanced</span></a></li>
               <li class="divider" aria-hidden="true"></li>
@@ -132,6 +133,7 @@
     </nav>
 
     <div class="container content">
+      <ng-include src="'syncthing/core/cloudJoin.html'"></ng-include>
 
       <!-- Panel: Open, no auth -->
 

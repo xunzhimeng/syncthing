@@ -6,6 +6,13 @@
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/88/badge)](https://bestpractices.coreinfrastructure.org/projects/88)
 [![Go Report Card](https://goreportcard.com/badge/github.com/syncthing/syncthing)](https://goreportcard.com/report/github.com/syncthing/syncthing)
 
+## XunCloud account sync
+
+This fork adds administrator-created sync accounts, per-user server directories,
+and automatic device/folder enrollment. See [deployment and client integration](docs/cloud-accounts.md).
+This is separate from the Syncthing administrator GUI login; existing installed
+clients must include the updated core.
+
 ## Goals
 
 Syncthing is a **continuous file synchronization program**. It synchronizes

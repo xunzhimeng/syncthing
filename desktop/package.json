@@ -1,0 +1,1 @@
+{"name":"xun-cloud-desktop","version":"0.2.0","private":true,"scripts":{"tauri":"tauri","build":"tauri build --bundles app","test:web":"node web_test.cjs"},"devDependencies":{"@tauri-apps/cli":"2.12.4"}}

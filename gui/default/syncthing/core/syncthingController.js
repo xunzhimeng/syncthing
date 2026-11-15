@@ -68,6 +68,27 @@ angular.module('syncthing.core')
         // window.metadata is set in /meta.js which requires authentication
         $scope.authenticated = window.metadata && window.metadata.authenticated;
 
+        var cloudHost = window.location.hostname.toLowerCase();
+        $scope.cloud = {
+            local: cloudHost === 'localhost' || cloudHost === '[::1]' || /^127\.(\d+\.){2}\d+$/.test(cloudHost),
+            open: $location.search().cloud === 'join',
+            server: '', username: '', password: '', busy: false
+        };
+        $scope.joinCloud = function () {
+            var c = $scope.cloud;
+            if (c.busy) { return; }
+            c.error = c.path = '';
+            c.busy = true;
+            var request = $http.post(urlbase + '/cloud/join', {server: c.server, username: c.username, password: c.password});
+            c.password = '';
+            request.then(function (response) {
+                c.path = response.data.path;
+            }, function (response) {
+                // Never log the response object: its config contains the request body.
+                c.error = (typeof response.data === 'string' && response.data.length < 512) ? response.data : ('HTTP ' + response.status);
+            }).finally(function () { c.busy = false; });
+        };
+
         $scope.login = {
             username: '',
             password: '',

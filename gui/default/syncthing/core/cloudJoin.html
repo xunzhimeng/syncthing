@@ -1,0 +1,18 @@
+<section class="panel panel-primary" ng-if="cloud.local && cloud.open && authenticated">
+  <div class="panel-heading"><h3 class="panel-title" translate>Connect cloud account</h3></div>
+  <form class="panel-body" name="cloudForm" ng-submit="joinCloud()">
+    <p translate>Use the sync account issued by your server administrator, not the Web GUI password.</p>
+    <div class="row">
+      <div class="form-group col-sm-4"><label for="cloud-server" translate>Enrollment server (IP or HTTPS host:port)</label>
+        <input id="cloud-server" class="form-control" type="text" ng-model="cloud.server" placeholder="cloud.example.net:8443" required></div>
+      <div class="form-group col-sm-4"><label for="cloud-user" translate>User</label>
+        <input id="cloud-user" class="form-control" type="text" ng-model="cloud.username" autocapitalize="none" spellcheck="false" autocomplete="username" required></div>
+      <div class="form-group col-sm-4"><label for="cloud-password" translate>Password</label>
+        <input id="cloud-password" class="form-control" type="password" ng-model="cloud.password" autocomplete="current-password" required></div>
+    </div>
+    <p role="alert" class="text-danger" ng-if="cloud.error" ng-bind="cloud.error"></p>
+    <p role="status" class="text-success" ng-if="cloud.path"><span translate>Account connected. Local folder:</span> <strong ng-bind="cloud.path"></strong></p>
+    <button class="btn btn-primary" type="submit" ng-disabled="cloud.busy || cloudForm.$invalid" translate>Connect cloud account</button>
+    <button class="btn btn-default" type="button" ng-disabled="cloud.busy" ng-click="cloud.open = false; cloud.password = ''; cloud.error = ''; cloud.path = ''" translate>Close</button>
+  </form>
+</section>

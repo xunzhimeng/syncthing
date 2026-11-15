@@ -18,3 +18,5 @@ deb
 /repos
 /proto/scripts/protoc-gen-gosyncthing
 /compat.json
+/tmp/
+.DS_Store

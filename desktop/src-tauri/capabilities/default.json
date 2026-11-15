@@ -1,0 +1,1 @@
+{"identifier":"main-local","description":"Only bundled main webview; no remote origins, filesystem, shell or network plugins.","windows":["main"],"permissions":["core:default"]}
