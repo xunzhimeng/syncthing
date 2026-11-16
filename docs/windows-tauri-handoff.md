@@ -6,7 +6,7 @@
 
 ## 来源与范围
 
-用户会提供本次 Mac 导出的 `xun-cloud-windows-handoff.zip` 和 SHA-256。该包是当前工作区源码快照，包含尚未提交的账户同步和 Tauri 代码，**不能只 clone GitHub 的 main 就假设拿到了新功能**。原始上游/派生仓库地址是 `git@github.com:xunzhimeng/syncthing.git`，仅作来源参考，本次没有 push。
+用户可提供 Mac 导出的源码包和 SHA-256，也可从 `git@github.com:xunzhimeng/syncthing.git` 获取源码。离线包是导出时的工作区快照，可能包含当时未提交的改动；Git 获取应核对分支、提交及 `desktop/package.json` 版本。旧源码包或旧分支不能当作已包含本轮更新，包内文件以 `MANIFEST.json` 为准。
 
 解压到新目录（不要覆盖已有配置/代码）。阅读：
 - `source/docs/cloud-accounts.md`
@@ -14,7 +14,7 @@
 - `source/desktop/README.md`
 - 此文件以及包内 `MANIFEST.json`
 
-包内 `source/desktop/` 是 0.2.0 Tauri 客户端（正式产品界面、系统凭据保存和自动登录、文件索引浏览/同步状态）。优先阅读 `source/docs/desktop-0.2-update.md` 完成此次升级验收；原配置 identifier 不变，不搬迁文件。`source/lib/cloudsync/` 提供账户验证、设备绑定和按账号目录隔离；`source/cmd/syncthing/cloud_desktop.go` 初始化独立本机 core。预编译 Windows amd64 内核在 `windows/syncthing.exe`，已包含 `cloud init-desktop`，可以先用它构建 UI，再自行重编内核。
+包内 `source/desktop/` 是 0.3.1 Tauri 客户端（文件 / 同步 / 设置三页，真实队列、整目录筛选/排序、系统文件定位；继续保留安全凭据与自动登录）。优先阅读 `source/desktop/README.md` 完成此次升级验收；原配置 identifier 不变，不搬迁文件。`source/lib/cloudsync/` 提供账户验证、设备绑定和按账号目录隔离；`source/cmd/syncthing/cloud_desktop.go` 初始化独立本机 core。预编译 Windows amd64 内核在 `windows/syncthing.exe`，已包含 `cloud init-desktop`，可以先用它构建 UI，再自行重编内核。
 
 ## 服务器和证书
 
@@ -34,7 +34,8 @@
 3. 复制 `windows/syncthing.exe` 到 `source/desktop/src-tauri/resources/syncthing.exe`，复制公开 CA；写 `resources/server.txt` 为 `192.168.0.104:18443`。
 4. 在 `source/desktop` 执行 `npm ci`、`npm run test:web`、`npm run tauri -- build`。使用提交的 Cargo.lock/package-lock.json；不使用 --ignore-version-mismatches。
 5. 安装并实际运行新测试客户端。不覆盖旧 Syncthing 或旧 Qt 客户端。独立配置路径由 Tauri app_data_dir 生成，identifier 为 `com.xun.cloud.test`，同步根为用户主目录 `XunCloud-Test`。
-6. 使用普通账号登录；无需手动填写设备 ID。测试 Windows→Mac 和 Mac→Windows 文件同步，对比 SHA-256；重启测试 App 验证复用设备身份与目录。
+6. 使用普通账号登录；无需手动填写设备 ID。测试 Windows→Mac 和 Mac→Windows 文件同步，对比 SHA-256；重启 App 验证复用设备身份与目录。
+7. 验证 0.3.1 默认文件页、可点击面包屑、整目录筛选/排序、分页，以及“在资源管理器中显示”仅定位已落盘文件、不执行文件、拒绝链接/越界。同步页核验真实接收/待发送/错误队列，离线和列表读取失败不能显示已同步。设置保留记住密码和一次启动自动登录；首页不显示凭据、证书和路径长文。
 
 ## 安全和验收
 

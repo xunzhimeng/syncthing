@@ -1,15 +1,27 @@
-//! Credentials never cross the native bridge on reads. The entire saved profile
-//! lives in the OS vault, not a JSON file or browser storage. No plaintext fallback.
+//! Saved passwords never cross the native bridge on reads.
+//! macOS: user-requested local file (0600), no Keychain access or migration.
+//! Windows: existing Credential Manager storage, unchanged.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex,
+use std::{
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
 };
 use zeroize::{Zeroize, Zeroizing};
 
+#[cfg(target_os = "windows")]
 const SERVICE: &str = "com.xun.cloud.test.account";
+#[cfg(target_os = "windows")]
 const USER: &str = "default";
+
+#[cfg(target_os = "macos")]
+#[path = "account_local.rs"]
+mod local;
+#[cfg(target_os = "macos")]
+use local::{clear_saved, persist, read_saved};
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,8 +64,8 @@ impl AccountState {
             automatic_attempted: AtomicBool::new(false),
         }
     }
-    pub fn load() -> Self {
-        let info = match read_saved() {
+    pub fn load(home: &Path) -> Self {
+        let info = match read_saved(home) {
             Ok(Some(saved)) => summary(&saved),
             Ok(None) => AccountInfo::default(),
             Err(error) => AccountInfo {
@@ -106,7 +118,8 @@ pub(super) async fn initialize(app: tauri::AppHandle) {
     use tauri::Manager;
     let core = app.state::<super::Core>();
     let _lock = core.account.operation.lock().await;
-    let info = match tauri::async_runtime::spawn_blocking(AccountState::load).await {
+    let home = core.home.clone();
+    let info = match tauri::async_runtime::spawn_blocking(move || AccountState::load(&home)).await {
         Ok(state) => state.info(),
         Err(_) => AccountInfo {
             storage_error: "登录信息读取未完成，请重试".into(),
@@ -116,12 +129,12 @@ pub(super) async fn initialize(app: tauri::AppHandle) {
     let _ = core.account.set(info);
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "windows")]
 fn entry() -> Result<keyring::Entry, String> {
     keyring::Entry::new(SERVICE, USER).map_err(|_| "无法访问系统凭据库；不会改用明文保存".into())
 }
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn read_saved() -> Result<Option<SavedAccount>, String> {
+#[cfg(target_os = "windows")]
+fn read_saved(_home: &Path) -> Result<Option<SavedAccount>, String> {
     match entry()?.get_password() {
         Ok(raw) => {
             let raw = Zeroizing::new(raw);
@@ -135,30 +148,30 @@ fn read_saved() -> Result<Option<SavedAccount>, String> {
     }
 }
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn read_saved() -> Result<Option<SavedAccount>, String> {
+fn read_saved(_home: &Path) -> Result<Option<SavedAccount>, String> {
     Ok(None)
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn persist(saved: &SavedAccount) -> Result<(), String> {
+#[cfg(target_os = "windows")]
+fn persist(_home: &Path, saved: &SavedAccount) -> Result<(), String> {
     let raw = Zeroizing::new(serde_json::to_string(saved).map_err(|_| "无法编码登录信息")?);
     entry()?
         .set_password(&raw)
         .map_err(|_| "系统凭据库保存失败；之前保存的信息可能仍存在，请解锁凭据库后重试".into())
 }
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn persist(_: &SavedAccount) -> Result<(), String> {
+fn persist(_home: &Path, _: &SavedAccount) -> Result<(), String> {
     Err("此平台暂不支持安全保存登录信息；未保存密码".into())
 }
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn clear_saved() -> Result<(), String> {
+#[cfg(target_os = "windows")]
+fn clear_saved(_home: &Path) -> Result<(), String> {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(_) => Err("无法清除系统凭据库中的登录信息，请解锁后重试".into()),
     }
 }
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn clear_saved() -> Result<(), String> {
+fn clear_saved(_home: &Path) -> Result<(), String> {
     Ok(())
 }
 
@@ -261,9 +274,10 @@ pub(super) async fn join_inner(
         auto_login,
     };
     let mut info = summary(&saved);
-    let stored = tauri::async_runtime::spawn_blocking(move || persist(&saved))
+    let home = core.home.clone();
+    let stored = tauri::async_runtime::spawn_blocking(move || persist(&home, &saved))
         .await
-        .map_err(|_| "凭据库操作未完成")?;
+        .map_err(|_| "登录信息保存未完成")?;
     if let Err(warning) = stored {
         info.has_password = false;
         info.auto_login = false;
@@ -298,9 +312,10 @@ pub(super) async fn login_saved_inner(
     if automatic && (!info.auto_login || !info.has_password || !info.storage_error.is_empty()) {
         return Err("未启用可用的自动登录".into());
     }
-    let saved = tauri::async_runtime::spawn_blocking(read_saved)
+    let home = core.home.clone();
+    let saved = tauri::async_runtime::spawn_blocking(move || read_saved(&home))
         .await
-        .map_err(|_| "凭据库操作未完成")??
+        .map_err(|_| "登录信息读取未完成")??
         .ok_or("还没有保存登录信息")?;
     if saved.password.is_empty() {
         return Err("没有已保存的密码，请输入密码登录".into());
@@ -316,9 +331,10 @@ pub(super) async fn login_saved_inner(
 #[tauri::command]
 pub(super) async fn forget_account(core: tauri::State<'_, super::Core>) -> Result<(), String> {
     let _lock = core.account.operation.lock().await;
-    tauri::async_runtime::spawn_blocking(clear_saved)
+    let home = core.home.clone();
+    tauri::async_runtime::spawn_blocking(move || clear_saved(&home))
         .await
-        .map_err(|_| "凭据库操作未完成")??;
+        .map_err(|_| "登录信息清除未完成")??;
     core.account.set(AccountInfo::default())
 }
 

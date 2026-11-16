@@ -1,44 +1,74 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light"><title>小寻云同步</title><link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>小寻云同步</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app-shell">
-  <aside class="sidebar" aria-label="工作空间">
-    <a class="brand" href="#workspace" aria-label="小寻云同步首页"><span class="brand-mark" aria-hidden="true">↥</span><span>小寻云同步<small>你的私人文件空间</small></span></a>
-    <div class="nav-label">工作空间</div><a class="nav-item active" href="#workspace"><span aria-hidden="true">▦</span> 我的文件<span class="nav-dot"></span></a>
-    <a class="nav-item" href="#account-panel"><span aria-hidden="true">◎</span> 账号与连接</a>
-    <div class="sidebar-bottom"><span class="security-icon" aria-hidden="true">◇</span><strong>文件属于你自己</strong><p>在你的服务器与设备间<br>安全同步，随时访问。</p><span class="sidebar-caption">PRIVATE & CONNECTED</span></div>
+  <aside class="sidebar">
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 22H8a6 6 0 0 1-.6-12A9 9 0 0 1 24 12a5 5 0 0 1 0 10h-1M16 26V14m-4 4 4-4 4 4"/></svg><span>小寻云同步</span></div>
+    <nav class="navigation" aria-label="主导航">
+      <button id="nav-files" class="nav-item active" type="button" aria-controls="page-files" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z"/></svg><span>文件</span></button>
+      <button id="nav-sync" class="nav-item" type="button" aria-controls="page-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 0 1 14-3l2 3m0-6v6h-6M20 14A8 8 0 0 1 6 17l-2-3m0 6v-6h6"/></svg><span>同步</span></button>
+      <button id="nav-settings" class="nav-item" type="button" aria-controls="page-settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 3-2 .9-2.7-.9-2 3.5L4 11v2l-2.3 1.5 2 3.5 2.7-.9 2 .9.6 3h4l.6-3 2-.9 2.7.9 2-3.5L18 13v-2l2.3-1.5-2-3.5-2.7.9-2-.9-.6-3Z"/><circle cx="11" cy="12" r="3"/></svg><span>设置</span></button>
+    </nav>
   </aside>
-  <main id="workspace">
-    <header class="topbar"><div><span class="eyebrow">你的工作空间</span><h1>我的文件</h1><p>让每一份更新，在设备间自然同步。</p></div><div class="topbar-actions"><span id="health" class="pill neutral" role="status">正在连接…</span><button id="refresh" class="icon-button" type="button" aria-label="刷新文件与同步状态" title="刷新">↻</button></div></header>
-    <section class="overview" aria-label="同步概览">
-      <div class="metric"><span class="metric-icon" aria-hidden="true">▤</span><div><span class="metric-label">空间中的文件</span><strong id="stat-files">—</strong></div></div>
-      <div class="metric"><span class="metric-icon blue" aria-hidden="true">◫</span><div><span class="metric-label">文件总大小</span><strong id="stat-bytes">—</strong></div></div>
-      <div class="metric"><span class="metric-icon amber" aria-hidden="true">↕</span><div><span class="metric-label">待同步项目</span><strong id="stat-pending">—</strong></div></div>
+  <main>
+    <header class="topbar">
+      <h1 id="page-title" tabindex="-1">文件</h1>
+      <div class="topbar-actions">
+        <label id="folder-control" hidden><span class="sr-only">同步空间</span><select id="folder-select" aria-label="同步空间"></select></label>
+        <span id="health" class="health neutral" role="status">正在连接</span>
+      </div>
+    </header>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden><span id="notice-text"></span><button id="notice-settings" class="link-button" type="button" hidden>前往设置</button><button id="dismiss-notice" class="icon-button" type="button" aria-label="关闭提示">×</button></div>
+
+    <section id="page-files" class="page files-page" aria-label="文件">
+      <div class="files-toolbar">
+        <label class="search" for="file-filter"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="file-filter" type="search" placeholder="筛选当前目录" autocomplete="off" aria-label="筛选当前目录"></label>
+        <div class="toolbar-actions"><button id="refresh" class="icon-button" type="button" aria-label="刷新文件" title="刷新"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10a8 8 0 1 0-1 7M20 4v6h-6"/></svg></button><button id="open-current" class="secondary reveal-current" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 4h7v7m0-7L10 14M9 5H4v15h15v-5"/></svg><span id="reveal-label">在系统文件管理器中显示</span></button></div>
+      </div>
+      <div class="file-panel">
+        <div class="path-bar"><button id="parent-folder" class="icon-button" type="button" disabled aria-label="返回上级目录" title="返回上级目录"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 11 6-6 6 6m-6-6v15"/></svg></button><nav id="breadcrumbs" aria-label="目录路径"></nav></div>
+        <p id="files-message" class="inline-message" role="status" aria-live="polite"></p>
+        <div class="table-wrap"><table class="file-table" aria-label="文件列表">
+          <colgroup><col class="name-col"><col class="size-col"><col class="modified-col"><col class="status-col"><col class="action-col"></colgroup>
+          <thead><tr><th id="heading-name" scope="col" aria-sort="ascending"><button id="sort-name" class="sort-button" type="button">名称<span id="sort-name-mark" aria-hidden="true">↑</span></button></th><th id="heading-size" scope="col" aria-sort="none"><button id="sort-size" class="sort-button" type="button">大小<span id="sort-size-mark" aria-hidden="true">↕</span></button></th><th id="heading-modified" scope="col" aria-sort="none"><button id="sort-modified" class="sort-button" type="button">修改时间<span id="sort-modified-mark" aria-hidden="true">↕</span></button></th><th scope="col">同步状态</th><th scope="col"><span class="sr-only">显示位置</span></th></tr></thead>
+          <tbody id="file-rows"><tr class="empty-row"><td colspan="5">正在读取文件</td></tr></tbody>
+        </table></div>
+        <div class="table-footer"><span id="files-count">—</span><button id="load-more" class="link-button" type="button" hidden>加载更多</button></div>
+      </div>
     </section>
-    <section class="space-section" aria-labelledby="spaces-heading"><div class="section-head"><h2 id="spaces-heading">同步空间</h2><span id="sync-summary" class="muted">正在读取同步状态…</span></div><div id="folders" class="folders"><p class="empty-state">正在读取你的空间…</p></div></section>
-    <section class="card files-card" aria-labelledby="files-heading">
-      <div class="files-toolbar"><div class="heading-group"><h2 id="files-heading">文件列表</h2><span id="files-count" class="count">—</span></div><div class="toolbar-controls"><label class="sr-only" for="folder-select">选择同步空间</label><select id="folder-select" aria-label="选择同步空间"></select><label class="sr-only" for="file-filter">筛选已载入的项目</label><input id="file-filter" type="search" placeholder="筛选已载入的项目" autocomplete="off"><button id="open-current" class="secondary" type="button">打开同步目录 ↗</button></div></div>
-      <div class="path-bar"><button id="parent-folder" class="path-up" type="button" disabled aria-label="返回上级目录" title="返回上级目录">↑</button><span id="breadcrumbs">全部文件</span><span class="index-hint">同步索引</span></div>
-      <p id="files-message" class="files-message" role="status" aria-live="polite">登录后即可浏览同步空间。</p>
-      <div class="table-wrap"><table><thead><tr><th scope="col">名称</th><th scope="col">大小</th><th scope="col">修改时间</th><th scope="col">同步状态</th></tr></thead><tbody id="file-rows"><tr class="empty-row"><td colspan="4">正在读取文件…</td></tr></tbody></table></div>
-      <div class="files-footer"><span>显示已被同步引擎发现的文件；新文件扫描后出现。</span><button id="load-more" class="secondary" type="button" hidden>加载更多</button></div>
+
+    <section id="page-sync" class="page sync-page" aria-label="同步" hidden>
+      <div class="sync-toolbar"><div><h2>待同步</h2><p id="sync-summary" class="sync-summary">正在读取状态</p></div><button id="sync-refresh" class="icon-button" type="button" aria-label="刷新同步队列" title="刷新"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10a8 8 0 1 0-1 7M20 4v6h-6"/></svg></button></div>
+      <div class="file-panel">
+        <p id="sync-message" class="inline-message" role="status" aria-live="polite"></p>
+        <div class="table-wrap"><table class="activity-table" aria-label="同步队列"><colgroup><col class="name-col"><col class="direction-col"><col class="size-col"><col class="status-col"></colgroup><thead><tr><th scope="col">名称</th><th scope="col">方向</th><th scope="col">大小</th><th scope="col">状态</th></tr></thead><tbody id="activity-rows"><tr class="empty-row"><td colspan="4">正在读取队列</td></tr></tbody></table></div>
+        <div class="table-footer"><span id="activity-count">—</span><button id="activity-more" class="link-button" type="button" hidden>加载更多</button></div>
+      </div>
     </section>
-    <details id="account-panel" class="card account-card" open>
-      <summary><span class="summary-title"><span class="summary-symbol" aria-hidden="true">◎</span><span>账号与连接<small id="account-summary">尚未连接账号</small></span></span><span class="details-toggle" aria-hidden="true">⌄</span></summary>
-      <div class="details-content"><form id="login">
-        <div class="login-grid"><label for="server">服务器地址<input id="server" required maxlength="512" placeholder="服务器地址:端口" autocapitalize="none" spellcheck="false" autocomplete="url"></label><label for="username">账号<input id="username" required maxlength="32" autocomplete="username" placeholder="你的同步账号" autocapitalize="none" spellcheck="false"></label><label for="password">密码<input id="password" type="password" required maxlength="72" autocomplete="current-password" placeholder="输入账号密码"></label></div>
-        <div class="login-options"><label class="checkbox-label" for="remember-password"><input id="remember-password" type="checkbox">记住密码</label><label class="checkbox-label" for="auto-login"><input id="auto-login" type="checkbox">下次自动登录</label><span>选项在成功登录后生效</span></div>
-        <div class="actions"><button id="join" type="submit">连接个人空间</button><button id="saved-login" class="secondary" type="button" hidden>使用已保存的账号登录</button><button id="forget-account" class="text-button" type="button" hidden>清除登录信息</button></div>
-      </form><p id="message" class="message" role="status" aria-live="polite"></p><p class="note">密码仅保存在本机系统凭据库，不写入普通配置文件。已授权设备会自动恢复同步；清除登录信息不会撤销设备或删除文件。关闭应用会停止本机同步。</p></div>
-    </details>
-    <details class="connection-details"><summary>连接与证书信息</summary><dl><dt>服务器 CA 文件 SHA-256</dt><dd id="fingerprint">—</dd><dt>本机配置目录</dt><dd id="home">—</dd><dt>同步引擎版本</dt><dd id="version">—</dd></dl><p class="note">连接经过 HTTPS 证书验证。专用 CA 仅供本应用使用，不修改系统信任库。</p></details>
-    <footer><span class="footer-mark" aria-hidden="true">◇</span> 安全连接 · 私人空间 <span class="footer-right">小寻云同步</span></footer>
+
+    <section id="page-settings" class="page settings-page" aria-label="设置" hidden>
+      <section class="settings-card" aria-labelledby="account-heading">
+        <div class="settings-heading"><h2 id="account-heading">账号与连接</h2><p id="account-summary">尚未连接账号</p></div>
+        <form id="login">
+          <div class="login-grid"><label class="server-field" for="server">服务器地址<input id="server" required maxlength="512" placeholder="服务器地址:端口" autocapitalize="none" spellcheck="false" autocomplete="url"></label><label for="username">账号<input id="username" required maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false"></label><label for="password">密码<input id="password" type="password" required maxlength="72" autocomplete="current-password"></label></div>
+          <div class="login-options"><label class="checkbox-label" for="remember-password"><input id="remember-password" type="checkbox">记住密码</label><label class="checkbox-label" for="auto-login"><input id="auto-login" type="checkbox">下次自动登录</label></div>
+          <p id="storage-note" class="settings-note">选项在登录成功后生效。</p>
+          <div class="actions"><button id="join" type="submit">登录</button><button id="saved-login" class="secondary" type="button" hidden>使用已保存的账号登录</button><button id="forget-account" class="link-button danger" type="button" hidden>清除登录信息</button></div>
+        </form>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </section>
+      <details class="connection-details"><summary>连接与证书信息</summary><dl><dt>服务器 CA 文件 SHA-256</dt><dd id="fingerprint">—</dd><dt>本机配置目录</dt><dd id="home">—</dd><dt>同步引擎版本</dt><dd id="version">—</dd></dl></details>
+    </section>
   </main>
 </div>
-<dialog id="forget-dialog" aria-labelledby="forget-title"><h2 id="forget-title">清除已保存的登录信息？</h2><p>只清除本机保存的账号和密码，不删除文件、不停止同步，也不撤销已授权设备。</p><div class="actions"><button id="cancel-forget" class="secondary" type="button">取消</button><button id="confirm-forget" type="button">确认清除</button></div></dialog>
+<dialog id="forget-dialog" aria-labelledby="forget-title" aria-describedby="forget-description"><h2 id="forget-title">清除登录信息？</h2><p id="forget-description">仅清除本机保存的账号和密码，不删除文件、不停止同步，也不撤销设备授权。</p><div class="actions"><button id="cancel-forget" class="secondary" type="button" autofocus>取消</button><button id="confirm-forget" class="danger-button" type="button">确认清除</button></div></dialog>
 <script src="app.js"></script>
-</body></html>
+</body>
+</html>

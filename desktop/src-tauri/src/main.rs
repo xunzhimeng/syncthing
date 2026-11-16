@@ -13,9 +13,11 @@ use std::{
 use tauri::{Manager, State};
 
 mod account;
+mod activity;
 mod files;
 use account::{forget_account, join_account, login_saved};
-use files::list_files;
+use activity::sync_activity;
+use files::{list_files, reveal_file};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -136,6 +138,7 @@ struct Folder {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Snapshot {
+    platform: String,
     home: String,
     version: String,
     connected: bool,
@@ -232,6 +235,7 @@ async fn snapshot_inner(core: &Core) -> Result<Snapshot, String> {
         });
     }
     Ok(Snapshot {
+        platform: std::env::consts::OS.into(),
         home: core.home.display().to_string(),
         version: version["longVersion"]
             .as_str()
@@ -247,21 +251,7 @@ async fn snapshot_inner(core: &Core) -> Result<Snapshot, String> {
 }
 #[tauri::command]
 async fn open_folder(core: State<'_, Core>, id: String) -> Result<(), String> {
-    let f = files::authorized_folder(&core, &id).await?;
-    let path = PathBuf::from(f["path"].as_str().ok_or("目录无效")?);
-    if !path.is_absolute() || !path.is_dir() {
-        return Err("目录尚未创建".into());
-    }
-    #[cfg(target_os = "macos")]
-    let mut cmd = Command::new("/usr/bin/open");
-    #[cfg(target_os = "windows")]
-    let mut cmd = Command::new("explorer.exe");
-    #[cfg(target_os = "linux")]
-    let mut cmd = Command::new("xdg-open");
-    cmd.arg(path)
-        .spawn()
-        .map_err(|_| "无法打开目录".to_string())?;
-    Ok(())
+    files::reveal_inner(&core, &id, "").await
 }
 fn hidden(cmd: &mut Command) {
     #[cfg(target_os = "windows")]
@@ -396,6 +386,8 @@ fn main() {
             login_saved,
             forget_account,
             list_files,
+            sync_activity,
+            reveal_file,
             open_folder
         ])
         .build(tauri::generate_context!())
@@ -413,6 +405,7 @@ mod tests {
     #[test]
     fn response_does_not_include_management_credentials() {
         let result = Snapshot {
+            platform: "macos".into(),
             home: "test".into(),
             version: "test".into(),
             connected: false,
@@ -479,32 +472,82 @@ mod tests {
             assert!(status.connected);
             assert!(!status.folders.is_empty());
             let first = &status.folders[0];
-            let page = files::list_inner(&core, &first.id, "", 0)
+            let page = files::list_inner(&core, &first.id, "", 0, &files::ListOptions::default())
                 .await
                 .expect("live root browse");
             let page_value = serde_json::to_value(&page).unwrap();
             assert!(page_value["total"].as_u64().unwrap() > 0);
             for row in page_value["entries"].as_array().unwrap() {
                 if row["kind"] == "directory" {
-                    files::list_inner(&core, &first.id, row["path"].as_str().unwrap(), 0)
-                        .await
-                        .expect("live subdirectory");
+                    files::list_inner(
+                        &core,
+                        &first.id,
+                        row["path"].as_str().unwrap(),
+                        0,
+                        &files::ListOptions::default(),
+                    )
+                    .await
+                    .expect("live subdirectory");
                 }
             }
-            assert!(files::list_inner(&core, "default", "", 0).await.is_err());
-            assert!(files::list_inner(&core, &first.id, "../outside", 0)
+            assert!(
+                files::list_inner(&core, "default", "", 0, &files::ListOptions::default())
+                    .await
+                    .is_err()
+            );
+            assert!(files::list_inner(
+                &core,
+                &first.id,
+                "../outside",
+                0,
+                &files::ListOptions::default()
+            )
+            .await
+            .is_err());
+            let activity = activity::activity_inner(&core, &first.id, 1)
                 .await
-                .is_err());
+                .expect("real queue read");
+            let root = PathBuf::from(&first.path);
+            for row in page_value["entries"].as_array().unwrap() {
+                if row["localAvailable"] == true {
+                    assert!(files::contained_path(&root, row["path"].as_str().unwrap()).is_ok());
+                }
+            }
             if let Some(output) = std::env::var_os("XUNCLOUD_TEST_REPORT") {
                 fs::write(
                     output,
-                    serde_json::to_vec_pretty(&json!({"snapshot": status, "files":page_value}))
-                        .unwrap(),
+                    serde_json::to_vec_pretty(
+                        &json!({"snapshot": status, "files":page_value, "activity":activity}),
+                    )
+                    .unwrap(),
                 )
                 .unwrap();
             }
             if let Some(credentials) = std::env::var_os("XUNCLOUD_TEST_CREDENTIALS") {
                 assert_eq!(std::env::var("XUNCLOUD_TEST_SAVE_ACCOUNT").unwrap(), "1");
+                #[cfg(target_os = "macos")]
+                {
+                    // Test persistence in an explicit scratch profile, not the installed
+                    // user's account file and never the old Keychain entry.
+                    let account_home = PathBuf::from(
+                        std::env::var_os("XUNCLOUD_TEST_ACCOUNT_HOME")
+                            .expect("explicit scratch account home"),
+                    );
+                    let scratch = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../tmp")
+                        .canonicalize()
+                        .unwrap();
+                    assert!(account_home.is_absolute());
+                    assert!(account_home
+                        .parent()
+                        .unwrap()
+                        .canonicalize()
+                        .unwrap()
+                        .starts_with(scratch));
+                    private_dir(&account_home).unwrap();
+                    core.home = account_home.join("core");
+                    private_dir(&core.home).unwrap();
+                }
                 let mut credentials: Value =
                     serde_json::from_slice(&fs::read(credentials).unwrap()).unwrap();
                 let password = credentials["password"].take().as_str().unwrap().to_owned();
@@ -517,14 +560,14 @@ mod tests {
                     true,
                 )
                 .await
-                .expect("account login + OS vault");
+                .expect("account login + platform account storage");
                 assert!(
                     result.get("warning").is_none(),
-                    "vault save did not succeed"
+                    "account save did not succeed"
                 );
                 assert!(core.account.info().has_password);
                 // Recreate state to verify persistence across an app restart.
-                core.account = account::AccountState::load();
+                core.account = account::AccountState::load(&core.home);
                 assert!(core.account.info().auto_login);
                 let wrong = account::join_inner(
                     &core,
@@ -545,7 +588,7 @@ mod tests {
                     .expect("automatic saved login");
                 assert!(restored.get("path").is_some());
                 assert!(account::login_saved_inner(&core, true).await.is_err());
-                println!("PASS OS vault save/reload + automatic login + one-attempt bound; no secrets returned");
+                println!("PASS platform account save/reload + automatic login + one-attempt bound; no secrets returned");
             }
             println!(
                 "PASS installed Rust HTTPS bridge + real file listing: {} authorized folder(s), server connected",
