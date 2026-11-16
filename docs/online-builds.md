@@ -17,7 +17,7 @@
 
 `server` 输入默认 `192.168.0.104:18443`，必须是账号入口，不是管理 GUI；默认服务仅同局域网可达。包内带现有服务器的**公开 CA**，没有账号密码、API key、服务器私钥或 CA 私钥。App 只在自身连接中信任此 CA，不修改系统证书库。可填写其他公信 HTTPS 地址；其他私有 CA 需先由管理员替换公开证书及相应指纹校验。
 
-取消勾选 `build_android` 可只编译桌面。Android 可独立打开 [Build XunCloud Android](https://github.com/xunzhimeng/syncthing-android/actions/workflows/build-app.yaml)，`coreRef` 指定账号内核的分支、标签或提交。总入口会自动把本次核心提交传给 Android，避免误用旧上游内核。
+取消勾选 `build_android` 可只编译桌面。只编译 APK 可用本仓库的 [Build XunCloud Android Only](https://github.com/xunzhimeng/syncthing/actions/workflows/build-android.yml)，始终使用所选核心分支的精确提交，不重跑桌面。Android 也可独立打开 [Build XunCloud Android](https://github.com/xunzhimeng/syncthing-android/actions/workflows/build-app.yaml)，`coreRef` 指定账号内核的分支、标签或提交。总入口会自动把本次核心提交传给 Android，避免误用旧上游内核。
 
 ## 安装与签名边界
 
