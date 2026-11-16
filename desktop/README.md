@@ -26,6 +26,10 @@ Mac 按用户要求不再使用钥匙串：记住密码和自动登录保留，�
 
 为保留已有登录、设备身份与数据，identifier **继续为 `com.xun.cloud.test`**，历史配置和 `~/XunCloud-Test` 同步根不搬迁。产品名及窗口标题为“小寻云同步”；旧路径中出现 Test 不代表另建测试空间，不要删除或重建这些目录。
 
+## 在线编译
+
+[GitHub Actions：Mac / Windows / Android](https://github.com/xunzhimeng/syncthing/actions/workflows/build-clients.yml) → **Run workflow** → 下载 Artifacts。详见 [下载与安装说明](../docs/online-builds.md)。Mac 分 Apple Silicon / Intel，Windows 为 x64 安装器；无需本地编译。
+
 ## 构建与验证
 
 ```sh

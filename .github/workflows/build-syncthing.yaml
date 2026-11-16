@@ -1,11 +1,8 @@
 name: Build Syncthing
 
+# Downstream client builds run in build-clients.yml. Keep the inherited full
+# upstream matrix available manually, rather than launching it on every UI push.
 on:
-  pull_request:
-  push:
-    branches-ignore:
-      - release
-      - release-rc*
   workflow_call:
   workflow_dispatch:
 

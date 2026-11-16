@@ -13,6 +13,8 @@ and automatic device/folder enrollment. See [deployment and client integration](
 This is separate from the Syncthing administrator GUI login; existing installed
 clients must include the updated core.
 
+**在线编译下载：** [Mac / Windows / Android Actions](https://github.com/xunzhimeng/syncthing/actions/workflows/build-clients.yml) · [使用说明](docs/online-builds.md)。无需本地安装编译环境。
+
 ## Goals
 
 Syncthing is a **continuous file synchronization program**. It synchronizes
